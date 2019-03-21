@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+# coding=UTF-8
+'''
+@Author: Jake Gu
+@Date: 2019-03-20 18:46:14
+@LastEditTime: 2019-03-20 21:03:11
+'''
 import numpy as np
 from multiagent.core import World, Agent, Landmark
 from multiagent.scenario import BaseScenario
@@ -89,33 +96,35 @@ class Scenario(BaseScenario):
     def agent_reward(self, agent, world):
         # Agents are negatively rewarded if caught by adversaries
         rew = 0
-        shape = False
+        shape = True
         adversaries = self.adversaries(world)
         
         # for l in world.landmarks:
         dists = [np.sqrt(np.sum(np.square(agent.state.p_pos - l.state.p_pos))) for l in world.landmarks]
-        min_dists = min(dists)
-        rew -= 0.1 * min_dists
-        if(min_dists<0.2):
+        min_dists = 0.1*min(dists)
+        rew -= min_dists
+        if(min_dists<0.01):
             rew += 1
         
         if shape:  # reward can optionally be shaped (increased reward for increased distance from adversary)
-            for adv in adversaries:
-                rew += 0.1 * np.sqrt(np.sum(np.square(agent.state.p_pos - adv.state.p_pos)))
+            dists = [np.sqrt(np.sum(np.square(agent.state.p_pos - adv.state.p_pos))) for adv in adversaries]
+            rew += 0.01*min(dists)
+            # for adv in adversaries:
+            #    rew += 0.1 * np.sqrt(np.sum(np.square(agent.state.p_pos - adv.state.p_pos)))
 
 
         if agent.collide:
             for a in adversaries:
                 if self.is_collision(a, agent):
-                    rew -= 10
+                    rew -= 1
 
         # agents are penalized for exiting the screen, so that they can be caught by the adversaries
         def bound(x):
             if x < 0.9:
                 return 0
             if x < 1.0:
-                return (x - 0.9) * 100
-            return min(10 * np.exp(2 * x - 2), 100)
+                return (x - 0.9) * 10
+            return min(np.exp(2 * x - 2)*1, 10)
         for p in range(world.dim_p):
             x = abs(agent.state.p_pos[p])
             rew -= bound(x)
@@ -154,4 +163,11 @@ class Scenario(BaseScenario):
             other_pos.append(other.state.p_pos - agent.state.p_pos)
             if not other.adversary:
                 other_vel.append(other.state.p_vel)
-        return np.concatenate([agent.state.p_vel] + [agent.state.p_pos] + entity_pos + other_pos + other_vel)
+        # print(agent.state.p_vel)
+        # print(agent.state.p_pos)
+        # print(entity_pos)
+        # print(other_pos)
+        # print(other_vel)
+        ret = np.concatenate([agent.state.p_vel] + [agent.state.p_pos] + entity_pos + other_pos + other_vel)
+        # print("ret:", ret.shape)
+        return ret
